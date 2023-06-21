@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+
+<title>LMCC: a Linear Model of Coregionalization with informative Covariates</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.6.0/build/styles/github.min.css">
+<script src="https://cdn.jsdelivr.net/combine/gh/highlightjs/cdn-release@11.6.0/build/highlight.min.js,npm/@xiee/utils/js/load-highlight.js" async></script>
+
+
+
+<style type="text/css">
+body, td {
+  font-family: sans-serif;
+  background-color: white;
+  font-size: 13px;
+}
+body {
+  max-width: 800px;
+  margin: auto;
+  padding: 1em;
+  line-height: 1.5;
+}
+tt, code, pre {
+  font-family: 'DejaVu Sans Mono', 'Droid Sans Mono', 'Lucida Console', Consolas, Monaco, monospace;
+}
+a:visited { color: #80007f; }
+pre, img { max-width: 100%; }
+code {
+  font-size: 92%;
+  border: 1px solid #ccc;
+}
+code[class] { background-color: #F8F8F8; }
+code.language-undefined { background-color: inherit; }
+table {
+  margin: auto;
+  border-top: 1px solid #666;
+  border-bottom: 1px solid #666;
+}
+table thead th { border-bottom: 1px solid #ddd; }
+th, td { padding: 5px; }
+thead, tfoot, tr:nth-child(even) { background: #eee; }
+blockquote {
+  color:#666;
+  margin:0;
+  padding-left: 1em;
+  border-left: 0.5em #eee solid;
+}
+hr { border: 1px #ddd dashed; }
+
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    filter:none !important;
+  }
+  body {
+    font-size: 12pt;
+    max-width: 100%;
+  }
+  a, a:visited { text-decoration: underline; }
+  hr {
+    visibility: hidden;
+    page-break-before: always;
+  }
+  pre, blockquote {
+    padding-right: 1em;
+    page-break-inside: avoid;
+  }
+  tr, img { page-break-inside: avoid; }
+  img { max-width: 100% !important; }
+  @page :left { margin: 15mm 20mm 15mm 10mm; }
+  @page :right { margin: 15mm 10mm 15mm 20mm; }
+  p, h2, h3 { orphans: 3; widows: 3; }
+  h2, h3 { page-break-after: avoid; }
+}
+</style>
+
+
+
+</head>
+
+<body>
+<h2>Introduction</h2>
+<p>In this vignette, we provide a small example of how to apply the functions of the package <em>lmcc</em>. The data used in this example is a subset of the methylation dataset described in the paper “Charting a dynamic DNA methylation landscape of the human genome” from Ziller et al. (2013). Methylation was obtained by whole genome bisulfite sequencing across different cell and tissue types. We focus here on 175 sites and 15 samples obtained from two cell types defining the binary covariate used in the analysis: human embryonic stem cells (ES) and primary cells.</p>
+<h2>Install and load package</h2>
+<p>Here are the instructions to load and install the packages.</p>
+<pre><code class="language-r">install.packages(&quot;lmcc&quot;)
+install.packages(&quot;knitr&quot;)
+install.packages(&quot;ggplot2&quot;)
+install.packages(&quot;ggrepel&quot;)
+install.packages(&quot;ggthemes&quot;)
+install.packages(&quot;tidyr&quot;)
+</code></pre>
+<pre><code class="language-r">suppressPackageStartupMessages(library(lmcc))
+library(knitr)
+library(ggplot2)
+library(ggrepel)
+library(ggthemes)
+library(DiceEval)
+#&gt; Le chargement a nécessité le package : DiceKriging
+library(tidyr)
+</code></pre>
+<h2>Load data</h2>
+<p>The dataset is available in the package <em>lmcc</em> and can be downloaded as follows:</p>
+<pre><code class="language-r">data(data_methyl)
+Y = data_methyl$Y
+sites = data_methyl$sites
+X = data_methyl$X
+colnames(X) = c(&quot;ES-cell&quot;,&quot;primary-cell&quot;)
+K = nrow(Y)
+N = ncol(Y)
+</code></pre>
+<h2>Simulation of missing data</h2>
+<p>Here, we simulate missing values on samples 2 to 8 and 10 to 15 for the sites 20 to 100 and 120 to 150.</p>
+<pre><code class="language-r">k_star = (1:K)[-c(1,9)]
+n_star = c(20:100,120:150)
+Y_obs = Y
+Y_obs[k_star,n_star] = NA
+</code></pre>
+<h2>Model fitting</h2>
+<p>The LMCC model is initialized with the function <em>svd_lmcc</em>, fitted with the function  <em>fit_lmcc</em> and missing values are predicted with the function <em>pred_lmcc</em>.</p>
+<pre><code class="language-r">obj_lmcc = svd_lmcc(Y_obs,sites,X,tol_eig = 1e-6)
+obj_lmcc = fit_lmcc(obj_lmcc)
+Y_pred = pred_lmcc(obj_lmcc)
+</code></pre>
+<p>Since missing values were simulated in this small example, one can compute the RMSE or R2 criteria using pre-defined functions.</p>
+<pre><code class="language-r">ind_na = is.na(Y_obs)
+R2(Y[ind_na],Y_pred[ind_na])
+#&gt; [1] 0.8583698
+RMSE(Y[ind_na],Y_pred[ind_na])
+#&gt; [1] 0.1152161
+</code></pre>
+<h2>Visualize results</h2>
+<p>We choose here two samples (sample 2 and sample 10) to visualize the true methylation values  and the corresponding predicted values.</p>
+<pre><code class="language-r">proc_a = 2
+proc_b = 10
+</code></pre>
+<pre><code class="language-r">colorTitle = &quot;black&quot;
+sizeTitle = 15
+formeTitle = &quot;bold.italic&quot;
+colorAxe = &quot;black&quot;
+sizeAxe = 10
+formeAxe = &quot;bold&quot;
+textSize = 15
+Title = &quot;Two samples&quot;
+low = &quot;#349be8&quot;
+high = &quot;#cc0000&quot;
+point_size = 2 
+size_point_graph = c(2,3)
+x = X
+
+df = data.table(sites = sites,
+                  Y_A = Y[proc_a, ],
+                  Y_A_obs = Y_pred[proc_a, ],
+                  Y_B = Y[proc_b, ],
+                  Y_B_obs = Y_pred[proc_b, ])
+  
+  
+df = data.table(df %&gt;% pivot_longer(!sites, names_to = &quot;origine&quot;, values_to = &quot;values&quot;))
+df = data.table(df, Type = factor(rep(c(&quot;Pred&quot;,&quot;True&quot;),nrow(df)/2),labels = c(&quot;True&quot;,&quot;Pred&quot;)), 
+                  X = as.factor(rep(rep(c(x[proc_a],x[proc_b]),each=2),nrow(df)/4)))
+    
+  p = ggplot(df, aes(
+    x = sites,
+    y = values,
+    color = X,
+    shape = Type,
+    size = Type
+  )) +
+    geom_point(alpha = 1) +
+    scale_shape_manual(values = c(1, 15), name=c(&quot;Values&quot;)) + 
+    scale_size_manual(guide=&quot;none&quot;, values = size_point_graph) +
+    guides(color = guide_legend(override.aes = list(size=point_size)),
+           shape = guide_legend(override.aes = list(size=point_size))) +
+    scale_color_manual(values = c(low,high),
+                       name=c(&quot;Cell type&quot;),
+                       breaks=c(&quot;0&quot;, &quot;1&quot;),
+                       labels=c(&quot;ES&quot;, &quot;primary&quot;))+
+
+    labs(title = Title,
+         x = &quot;Sites&quot;,
+         y = &quot;Gaussian processes&quot;)+
+    theme_minimal() +
+    theme(
+      text = element_text(size=textSize),
+      plot.title = element_text(
+        hjust = 0.5,
+        color = colorTitle,
+        size = sizeTitle,
+        face = formeTitle
+      ),
+      axis.title.x = element_text(
+        color = colorAxe,
+        size = sizeAxe,
+        face = formeAxe
+      ),
+      axis.title.y = element_text(
+        color = colorAxe,
+        size = sizeAxe,
+        face = &quot;bold&quot;
+      )
+    )
+  
+p
+</code></pre>
+<p><img src="data:image/png;base64,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" alt="plot of chunk unnamed-chunk-8" /></p>
+
+
+<script src="https://cdn.jsdelivr.net/combine/npm/@xiee/utils/js/center-img.min.js" async></script>
+</body>
+
+</html>

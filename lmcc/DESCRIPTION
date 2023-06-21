@@ -1,0 +1,26 @@
+Package: lmcc
+Title: Linear Model of Coregionalization with informative Covariates
+Version: 1.0.0
+Author: Melina Ribaud
+Maintainer: Melina Ribaud <melina.ribaud@gmail.com>
+Description: See details for the method at the following preprint e.g.: <https://hal.archives-ouvertes.fr/hal-02936779v3>. 
+URL: https://github.com/melinaR/lmcc
+License: GPL-3
+Encoding: UTF-8
+LazyData: true
+Depends:
+    R (>= 3.5.0),
+    FastGP,
+    FastGaSP,
+    ZIprop,
+    data.table,
+Suggests:
+    markdown,
+    knitr,
+    ggplot2,
+    ggrepel,
+    ggthemes,
+    DiceEval,
+    tidyr
+RoxygenNote: 7.2.3
+VignetteBuilder: knitr
